@@ -4,7 +4,7 @@ Stata program that label variables and drops pii using an excel input
 ## Overview
 
 Data officers/Managers might want to de-identify data and also label variables with the repeat group in mind. 
-This stata program de-identify data and labels some variables
+This stata program for a last stage data cleaning. labeling and de-identifying data
 
 ## installation(Beta)
 
