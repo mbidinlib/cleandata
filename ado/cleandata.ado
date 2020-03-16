@@ -6,11 +6,11 @@
 *Eports a dataset containing variables that ate PII *
 *************************************************** *
 
-cap program drop ctoimportpii  //drop program if exists
+cap program drop cleandata1  //drop program if exists
 
-program define ctoimportpii
+program define cleandata1
 
-    syntax using/ , [Long] [Wide] [dta] [xlsx] [xls] [PIIvar(name)]
+    syntax using/ , XLSForm(string) [Long] [Wide] [dta] [xlsx] [xls] [PIIvar(name)]
 	
 	qui{
 			* give an arror if Long or wide is not specified
@@ -19,8 +19,16 @@ program define ctoimportpii
 			exit
 		}
 		
+		*noi di "`xlsform'"
+
+			* Check if the using data is in stata format
+		if !regexm(`"`using'"', ".dta$") {
+			noi di as err "Invalid data format: the using file should be a .dta file"
+			exit
+		}
+
 			* Check if the using file is excel
-		if !regexm(`"`using'"', ".xls$|.xlsx$|.xlsm$") {
+		if !regexm("`xlsform'", ".xls$|.xlsx$|.xlsm$") {
 			noi di as err "File extention error: the using file should be a .xls or .xlsx or .xlms file"
 			exit
 		}
@@ -28,8 +36,8 @@ program define ctoimportpii
 		if mi("`piivar'")  loc piivar = "sensitive"
 				
 			*import xls form and set the pii column as local
-		import excel using "`using'" , clear first
-			
+		import excel using "`xlsform'" , clear first
+		
 			*Check if pii column exists
 		cap confirm variable `piivar'
 		if _rc{
@@ -48,19 +56,20 @@ program define ctoimportpii
 				 (`piivar' != "yes" && `piivar' != "Yes" ///
 				 && `piivar' != "YES"  && !regexm(type," repeat"))
 		
+		noi di "{title:Clean Data report}"
+
 			* Export For long format dataset
 		if "`long'" == "long" {
 			noi di "Importing PII variables for long format dataset"
-			noi di "{hline}"
 			gen new_name = name
 		}
 		
 		
 		* Export for wide format dataset
 		if "`wide'" == "wide"{
-			noi di "Importing PII variables for Wide format dataset"
 			noi di "{hline}"
-			
+			noi di "Importing PII variables for Wide format dataset"
+						
 			* Preserve dataset and save repeat groups into a local
 			preserve
 			keep if regexm(type, "repeat")
@@ -69,23 +78,24 @@ program define ctoimportpii
 			gen new_name = name		 // New variable name
 			
 			* Loop through all repeat groups and add a wild card to their names
+			loc rep  = 0
 			foreach j of loc repeat_names{
-				*di `"`j'"'
+				loc rep = `rep' + 1
 				qui sum question_order if regexm(type, "begin") & name == `"`j'"'
 				loc start_rep = `r(min)'
 				qui sum question_order if regexm(type, "end") & name == `"`j'"'
 				loc end_rep = `r(min)'
-				di `start_rep' _column(10) `end_rep'
+				noi di  "Reapeatgroup  `rep'" "   start_row    " `start_rep' _column(10)  "    End_row  " `end_rep'
 				* Adds _* to the repeats
-				replace new_name = new_name + "_*" if _n > `start_rep' & _n < `end_rep'
-				*replace name = new_name
+				replace new_name = new_name + "_*" if question_order > `start_rep' & question_order < `end_rep'
+
 			}
 			
 		}
 		
 		* Export and save output
 		drop if regexm(type, "repeat")
-		levelsof name, local(pii_vars) 	// keeps the pii vars as local
+		levelsof new_name, local(pii_vars) 	// keeps the pii vars as local
 		
 		tempfile pii_data
 		save `pii_data', replace
@@ -93,13 +103,13 @@ program define ctoimportpii
 			
 		if "`xls'" == "xls" | "`xlsx'" == "xlsx"{
 			noi di "Exporting sheet with suspected pii variables"
-			noi export excel pii_var_name label using "pii_variables.xlsx", ///
+			export excel pii_var_name label using "pii_variables.xlsx", ///
 				sheet(pii_variable) sheetreplace firstrow(variables)
 		}
 		else {
 			keep pii_var_name label
 			noi di "Saving dataset of PII variables"
-			noi save  "pii_variables.dta", replace
+			save  "pii_variables.dta", replace
 		}
 		
 		* Loook up into clculate fields	
@@ -119,15 +129,46 @@ program define ctoimportpii
 		* Save suspected pii variables
 		if "`xls'" == "xls" | "`xlsx'" == "xlsx"{
 			noi di "Exporting sheet with suspected pii variables"
-			noi export excel var_name label using "pii_variables.xlsx", ///
+			export excel var_name label using "pii_variables.xlsx", ///
 				sheet(suspected_pii) sheetreplace firstrow(variables)
 		}
 		else {
 			keep var_name label
 			noi di "Saving dataset of suspected pii variables"
-			noi save  "suspected_pii.dta", replace
+			save  "suspected_pii.dta", replace
 		}
 		
+
+
+		use "`using'", clear
+		*Label Variables
+
+
+
+		*Drop pii variables
+		preserve
+
+		loc drop_num = 0
+		foreach k of local  pii_vars{
+			*noi di "`k'"
+			cap drop `k'
+			loc drop_num = `drop_num'  + `r(k_drop)'
+			di `drop_num'
+		}
+
+		save "de-identified.dta", replace
+
+		restore
+
+		* Drop Report
+		noi {
+
+			di "{hline}"
+			di "Number of Repeat groups" _skip(20) "`rep'"
+			di "Number of PII variables droped" _skip(12)  "`drop_num'"
+
+		}
+
 	
 	}
 	
@@ -135,5 +176,5 @@ end
 
 
 
-
+cleandata1 using "qp4g_data.dta", xlsform("qp4g_cto.xlsx") wide xls pii(drop_pii)
  
