@@ -1,0 +1,3 @@
+v 0.0.1
+d IPA Ghana First Level Shortlisting Tolkit
+p IPA Ghana stata programs for conducting first level shortlisting.
