@@ -1,0 +1,12 @@
+0.0.1
+d 'CLEANDATA': IPA Ghana stata programs for conducting first level shortlisting
+d
+d KW: data cleaning
+d KW: de-identify
+d KW: pii
+d
+d Distribution-Date: 20200316
+d
+d Authors: Mathew Bidinlib, Innovations for Poverty Action
+d Support: mbidinlib@poverty-action.org
+f cleandata.ado
