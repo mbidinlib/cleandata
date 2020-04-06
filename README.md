@@ -1,4 +1,4 @@
-# shortlist
+# Cleandata
 Stata program that label variables and drops pii using an excel input
 
 ## Overview
