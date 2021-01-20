@@ -9,7 +9,7 @@ This stata program for a last stage data cleaning. labeling and de-identifying d
 ## installation(Beta)
 
 ```stata
-net install shortlist, all replace ///
+net install cleandata, all replace ///
 	from("https://raw.githubusercontent.com/mbidinlib/cleandata/master/ado")
 ```
 
